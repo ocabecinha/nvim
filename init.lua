@@ -78,7 +78,14 @@ require("lazy").setup({
         "nvim-tree/nvim-web-devicons"
       },
       config = function()
-        require("nvim-tree").setup({})
+        require("nvim-tree").setup({
+        sync_root_with_cwd = true,
+        respect_buf_cwd = true,
+        update_focused_file = {
+          enable = true,
+          update_root = true,
+        },
+      })
       end
     },
 
@@ -158,3 +165,4 @@ vim.keymap.set("n", "<leader>fg", "<cmd>Telescope live_grep<CR>")
 
 -- abrir file explorer
 vim.keymap.set("n", "<leader>e", "<cmd>NvimTreeToggle<CR>")
+vim.keymap.set("n", "<leader>ef", "<cmd>NvimTreeFindFile<CR>") 
