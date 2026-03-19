@@ -1,55 +1,66 @@
 vim.g.mapleader = " "
 
-vim.cmd("set expandtab")
-vim.cmd("set tabstop=2")
-vim.cmd("set softtabstop=2")
-vim.cmd("set shiftwidth=2")
+-- options
+
+local opt = vim.opt
+opt.expandtab = true
+opt.tabstop = 2
+opt.softtabstop = 2
+opt.shiftwidth = 2
+opt.termguicolors = true
+opt.clipboard = "unnamedplus"
+
+-- neovide config
+
+if vim.g.neovide then
+  opt.guifont = "JetBrainsMono Nerd Font:h14"
+
+  vim.g.neovide_cursor_animation_length = 0.14
+  vim.g.neovide_cursor_trail_size = 0.5
+  vim.g.neovide_cursor_antialiasing = true
+  vim.g.neovide_scroll_animation_length = 0.35
+end
+
+-- cursor
+
+opt.guicursor = "n-v-c:block,i-ci-ve:ver35,r-cr:hor25,o:hor50"
+
+-- bootstrap lazy.nvim
 
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
-  local lazyrepo = "https://github.com/folke/lazy.nvim.git"
-  local out = vim.fn.system({ "git", "clone", "--filter=blob:none", "--branch=stable", lazyrepo, lazypath })
-  if vim.v.shell_error ~= 0 then
-    vim.api.nvim_echo({
-      { "Failed to clone lazy.nvim:\n", "ErrorMsg" },
-      { out, "WarningMsg" },
-      { "\nPress any key to exit..." },
-    }, true, {})
-    vim.fn.getchar()
-    os.exit(1)
-  end
+  vim.fn.system({
+    "git",
+    "clone",
+    "--filter=blob:none",
+    "https://github.com/folke/lazy.nvim.git",
+    "--branch=stable",
+    lazypath,
+  })
 end
+opt.rtp:prepend(lazypath)
 
-vim.opt.rtp:prepend(lazypath)
-vim.opt.termguicolors = true
+-- plugins
 
 require("lazy").setup({
   spec = {
+
+    -- theme
 
     {
       "folke/tokyonight.nvim",
       lazy = false,
       priority = 1000,
-      opts = {},
+      config = function()
+        vim.cmd.colorscheme("tokyonight")
+      end,
     },
 
-     -- telescope
+    -- telescope
 
     {
       "nvim-telescope/telescope.nvim",
-      dependencies = { "nvim-lua/plenary.nvim" }
-    },
-
-    -- smear cursor 
-
-    {
-      "sphamba/smear-cursor.nvim",
-      opts = {
-        stiffness = 0.5,
-        trailing_stiffness = 0.5,
-        trailing_exponent = 1,
-        distance_stop_animating = 0.5,
-      },
+      dependencies = { "nvim-lua/plenary.nvim" },
     },
 
     -- treesitter
@@ -59,110 +70,171 @@ require("lazy").setup({
       lazy = false,
       build = ":TSUpdate",
       config = function()
-        local ok, ts = pcall(require, "nvim-treesitter.configs")
-        if ok then
-          ts.setup({
-            ensure_installed = { "lua", "java" },
-            highlight = { enable = true },
-            indent = { enable = true },
-          })
-        end
+        require("nvim-treesitter.config").setup({
+          ensure_installed = { "lua", "java" },
+          highlight = { enable = true },
+          indent = { enable = true },
+        })
       end,
     },
 
-    -- file explorer
+    -- explorer
 
     {
       "nvim-tree/nvim-tree.lua",
-      dependencies = {
-        "nvim-tree/nvim-web-devicons"
-      },
+      dependencies = { "nvim-tree/nvim-web-devicons" },
       config = function()
         require("nvim-tree").setup({
-        sync_root_with_cwd = true,
-        respect_buf_cwd = true,
-        update_focused_file = {
-          enable = true,
-          update_root = true,
-        },
-      })
-      end
+          sync_root_with_cwd = true,
+          update_focused_file = {
+            enable = true,
+            update_root = true,
+          },
+          view = { width = 35 },
+        })
+      end,
     },
 
     -- status line
 
     {
       "nvim-lualine/lualine.nvim",
-      dependencies = {
-        "nvim-tree/nvim-web-devicons"
-      },
+      dependencies = { "nvim-tree/nvim-web-devicons" },
       config = function()
         require("lualine").setup({
-          options = {
-            theme = "tokyonight"
-          }
+          options = { theme = "tokyonight" },
         })
-      end
+      end,
     },
 
     -- which key
 
-    {
+   {
       "folke/which-key.nvim",
       event = "VeryLazy",
       config = function()
         require("which-key").setup()
-      end
+      end,
     },
 
-    -- auto complete
+    --  mason
+
+   {
+      "williamboman/mason.nvim",
+      config = function()
+        require("mason").setup()
+      end,
+    },
+
+    -- mason lsp
 
     {
-    "hrsh7th/nvim-cmp",
-     dependencies = {
-    "hrsh7th/cmp-nvim-lsp",
-    "hrsh7th/cmp-buffer",
-    "hrsh7th/cmp-path",
-    "L3MON4D3/LuaSnip",
-   },
-  config = function()
-    local cmp = require("cmp")
+      "williamboman/mason-lspconfig.nvim",
+      dependencies = { "williamboman/mason.nvim" },
+      config = function()
+        require("mason-lspconfig").setup({
+          ensure_installed = {
+            "lua_ls",
+            "jdtls",
+            "pyright",
+          },
+        })
+      end,
+    },
 
-    cmp.setup({
-      snippet = {
-        expand = function(args)
-          require("luasnip").lsp_expand(args.body)
-        end,
+    -- lsp config 
+
+    {
+      "neovim/nvim-lspconfig",
+      dependencies = {
+        "hrsh7th/cmp-nvim-lsp",
       },
+      config = function()
+        local lspconfig = require("lspconfig")
+        local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
-      mapping = cmp.mapping.preset.insert({
-        ["<C-Space>"] = cmp.mapping.complete(),
-        ["<CR>"] = cmp.mapping.confirm({ select = true }),
-        ["<Tab>"] = cmp.mapping.select_next_item(),
-        ["<S-Tab>"] = cmp.mapping.select_prev_item(),
-      }),
+        local servers = {
+          lua_ls = {},
+          jdtls = {},
+          pyright = {},
+          tsserver = {},
+        }
 
-      sources = {
-        { name = "nvim_lsp" },
-        { name = "buffer" },
-        { name = "path" },
+        for server, config in pairs(servers) do
+          config.capabilities = capabilities
+          lspconfig[server].setup(config)
+        end
+
+        -- keymaps lsp
+
+        local keymap = vim.keymap
+        keymap.set("n", "gd", vim.lsp.buf.definition)
+        keymap.set("n", "K", vim.lsp.buf.hover)
+        keymap.set("n", "<leader>rn", vim.lsp.buf.rename)
+        keymap.set("n", "<leader>ca", vim.lsp.buf.code_action)
+      end,
+    },
+
+    -- autocomplete
+
+    {
+      "hrsh7th/nvim-cmp",
+      dependencies = {
+        "hrsh7th/cmp-nvim-lsp",
+        "hrsh7th/cmp-buffer",
+        "hrsh7th/cmp-path",
+        "L3MON4D3/LuaSnip",
       },
-    })
-  end
-},
+      config = function()
+        local cmp = require("cmp")
 
+        cmp.setup({
+          snippet = {
+            expand = function(args)
+              require("luasnip").lsp_expand(args.body)
+            end,
+          },
+
+          mapping = cmp.mapping.preset.insert({
+            ["<C-Space>"] = cmp.mapping.complete(),
+            ["<CR>"] = cmp.mapping.confirm({ select = true }),
+            ["<Tab>"] = cmp.mapping.select_next_item(),
+            ["<S-Tab>"] = cmp.mapping.select_prev_item(),
+          }),
+
+          sources = {
+            { name = "nvim_lsp" },
+            { name = "buffer" },
+            { name = "path" },
+          },
+        })
+      end,
+    },
   },
 
   checker = { enabled = true },
-  })
+})
 
-vim.cmd.colorscheme("tokyonight")
+-- autocheck cmd 
 
--- keymaps
+vim.api.nvim_create_autocmd("BufEnter", {
+  callback = function()
+    local dir = vim.fn.expand("%:p:h")
+    if dir ~= "" then
+      vim.cmd.cd(dir)
+    end
+  end,
+})
 
-vim.keymap.set("n", "<leader>ff", "<cmd>Telescope find_files<CR>")
-vim.keymap.set("n", "<leader>fg", "<cmd>Telescope live_grep<CR>")
+-- keymaps 
 
--- abrir file explorer
-vim.keymap.set("n", "<leader>e", "<cmd>NvimTreeToggle<CR>")
-vim.keymap.set("n", "<leader>ef", "<cmd>NvimTreeFindFile<CR>") 
+local keymap = vim.keymap
+
+keymap.set("n", "<leader>ff", "<cmd>Telescope find_files<CR>")
+keymap.set("n", "<leader>fg", "<cmd>Telescope live_grep<CR>")
+keymap.set("n", "<leader>e", "<cmd>NvimTreeToggle<CR>")
+
+keymap.set("n", "<leader>ef", function()
+  vim.cmd.cd("%:p:h")
+  vim.cmd("NvimTreeOpen")
+end)
