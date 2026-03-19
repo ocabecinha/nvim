@@ -29,7 +29,7 @@ opt.guicursor = "n-v-c:block,i-ci-ve:ver35,r-cr:hor25,o:hor50"
 
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
-  vim.fn.system({
+    vim.fn.system({
     "git",
     "clone",
     "--filter=blob:none",
@@ -157,7 +157,6 @@ require("lazy").setup({
           lua_ls = {},
           jdtls = {},
           pyright = {},
-          tsserver = {},
         }
 
         for server, config in pairs(servers) do
